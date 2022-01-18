@@ -12,6 +12,7 @@ project(HIPO VERSION 1.3)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-O3 -fPIC")
 
 if(APPLE)
     # use, i.e. don't skip the full RPATH for the build tree
