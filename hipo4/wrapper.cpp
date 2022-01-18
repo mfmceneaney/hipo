@@ -1,12 +1,15 @@
 #include <iostream>
 #include "reader.h"
 #include "event.h"
+#include "writer.h"
 
 hipo::reader      hipo_FORT_Reader;
 hipo::event       hipo_FORT_Event;
 hipo::dictionary  hipo_FORT_Dictionary;
+hipo::writer      hipo_FORT_Writer;
 
 std::map<std::string, hipo::bank *> eventStore;
+std::string banklist;
 
 extern "C" {
 
@@ -41,190 +44,296 @@ extern "C" {
       return 0;
   }
 
-  void hipo_read_bank_(const char *bankname, int *bankRows, int banknameLength){
+  /***** Write methods for banks (Gavalian/McEneaney) *****/
+
+  //IMPORTANT: This step needs to happen before opening the file!
+  void hipo_write_schema_(const char* schemaString, const char *name, int __group,int __item) {
+    hipo::schema *schema = new hipo::schema(name, __group, __item);
+    schema->parse(schemaString);
+
+    hipo::dictionary *dict = new hipo::dictionary();
+    dict->addSchema(*schema);
+    hipo_FORT_Writer.addDictionary(*dict);
+  }
+
+  void hipo_add_schema_(const char* schemaString, const char *name, int __group,int __item) {
+    hipo::schema *schema = new hipo::schema(name, __group, __item);
+    schema->parse(schemaString);
+
+    hipo::dictionary *dict = new hipo::dictionary();
+    dict->addSchema(*schema);
+    
+    hipo_FORT_Writer.addDictionary(hipo_FORT_Dictionary);
+    hipo_FORT_Writer.addDictionary(*dict);
+  }
+
+  void hipo_write_open_(const char* filename) {
+    hipo_FORT_Writer.open(filename);
+  }
+
+  void hipo_write_flush_() { // Write current buffer
+    hipo_FORT_Writer.flush();
+  }
+
+  void hipo_write_close_() {
+    hipo_FORT_Writer.close();
+  }
+
+  void hipo_write_bank_(const char *name, const char** names, double** data, int bankCols, int bankRows, std::string& dtype) {
+    hipo::dictionary dict = hipo_FORT_Writer.getDictionary();
+    hipo::schema schema = dict.getSchema(name);
+    hipo::bank *bank = new hipo::bank(schema);
+    bank->setRows(bankRows);
+
+    for (int i=0; i<bankCols; i++){
+      for (int j=0; j<bankRows; j++) {
+        if (dtype=="D") bank->putDouble(names[i],j,data[i][j]);
+        else if (dtype=="I") bank->putInt(names[i],j,(int)data[i][j]);
+        else if (dtype=="F") bank->putFloat(names[i],j,(float)data[i][j]);
+        else bank->putDouble(names[i],j,data[i][j]);
+      }
+    }
+
+    hipo_FORT_Event.addStructure(*bank);
+  }
+
+  void hipo_add_event_() {
+    hipo_FORT_Writer.addEvent(hipo_FORT_Event);
+  }
+
+  /***** END Write methods for banks *****/
+
+  /***** Read methods for banks (Gavalian/McEneaney) *****/
+
+  int hipo_go_to_event_(int* fstatus, int* eventNumber){
+    bool status = hipo_FORT_Reader.gotoEvent(*eventNumber);
+    if(status==false){
+      *fstatus = 12;
+      return 12;
+    }
+    hipo_FORT_Reader.read(hipo_FORT_Event);
+    std::map<std::string, hipo::bank *>::iterator it;
+    for ( it = eventStore.begin(); it != eventStore.end(); it++ )
+      {
+         it->second->reset();   // string's value
+      }
+      *fstatus = 0;
+      return 0;
+  }
+
+  bool hipo_has_bank_(const char *bankname, int banknameLength) {
     char *buffer = (char * ) malloc(banknameLength+1);
     memcpy(buffer,bankname,banknameLength);
     buffer[banknameLength] = '\0';
-    if(eventStore.count(std::string(buffer))==0){
-      if(hipo_FORT_Dictionary.hasSchema(buffer)==true){
-         hipo::bank *bank_ptr = new hipo::bank(hipo_FORT_Dictionary.getSchema(buffer));
-         eventStore[buffer] = bank_ptr;
-         printf("---> map : initializing bank \"%24s\" (%6d, %5d) to the store\n",
-            buffer,hipo_FORT_Dictionary.getSchema(buffer).getGroup(),
-            hipo_FORT_Dictionary.getSchema(buffer).getItem() );
-      } else {
-         *bankRows = 0;
-         free(buffer);
-         return;
+    
+    return hipo_FORT_Dictionary.hasSchema(buffer);
+  }
+
+  void hipo_show_banks_() {
+    hipo_FORT_Dictionary.show();
+  }
+
+  void hipo_show_bank_(const char *bankname, int banknameLength) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    std::cout<<hipo_FORT_Dictionary.getSchema(buffer).getSchemaString()<<std::endl;
+  }
+
+  int hipo_get_bank_rows_(const char *bankname, int banknameLength) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    // Read event in and get # of bank rows
+    hipo_FORT_Event.getStructure(*eventStore[buffer]);
+    return eventStore[buffer]->getRows();
+  }
+
+  int hipo_get_bank_entries_(const char *bankname, int banknameLength) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    // Get bank entries
+    return hipo_FORT_Dictionary.getSchema(buffer).getEntries();
+  }
+  //NOTE: This uses the `std::string banklist` variable defined at the top of the file.
+  const unsigned char *hipo_get_banks_() {
+    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
+    std::string name;
+    std::string separator = " ";
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      name = schemaList[idx];
+      banklist = banklist + name;
+      if (idx<schemaList.size()-1) { banklist = banklist + separator; }
+    }
+    const unsigned char *entries = reinterpret_cast<const unsigned char*>(banklist.c_str());
+
+    return entries;
+  }
+
+  void hipo_get_bank_entries_names_(const char *bankname, int banknameLength, const unsigned char** entries) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    hipo::schema schema = hipo_FORT_Dictionary.getSchema(buffer);
+    const int nEntries  = schema.getEntries();
+    for (int i=0; i<nEntries; i++) {
+      std::string str = schema.getEntryName(i);
+      const unsigned char* entry = reinterpret_cast<const unsigned char*>(str.c_str());
+      entries[i] = entry;
+    }
+  }
+
+  const unsigned char *hipo_get_bank_entries_names_types_(const char *bankname, int banknameLength) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    std::string str = hipo_FORT_Dictionary.getSchema(buffer).getSchemaString();
+    const unsigned char* entries = reinterpret_cast<const unsigned char*>(str.c_str());
+    return entries;
+  }
+
+  /*
+  *  Helper method for hipo_get_bank_entries_types_() below.
+  *  NOTE: This is HARD-CODED to be the inverse of the 
+  *  schema::getTypeByString() private method.
+  */
+  const char *getTypeByInt(int i) {
+      if(i==1){
+        return "B";
+      } else if(i==2) {
+        return "S";
+      } else if(i==3) {
+        return "I";
+      } else if(i==4) {
+        return "F";
+      } else if(i==5) {
+        return "D";
+      } else if(i==8) {
+        return "L";
       }
+      return "U";
+  }
+
+  void hipo_get_bank_entries_types_(const char *bankname, int banknameLength, const char **entries) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    hipo::schema schema = hipo_FORT_Dictionary.getSchema(buffer);
+    const int nEntries  = schema.getEntries();
+    for (int i=0; i<nEntries; i++) {
+      entries[i] = getTypeByInt(schema.getEntryType(i));
     }
 
-    hipo_FORT_Event.getStructure(*eventStore[buffer]);
-    *bankRows = eventStore[buffer]->getRows();
+  }
+
+  void hipo_read_bank_(const char *bankname, int banknameLength, bool verbose) {
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+    if (eventStore.count(std::string(buffer))==0) {
+      if (hipo_FORT_Dictionary.hasSchema(buffer)==true) {
+        hipo::bank *bank_ptr = new hipo::bank(hipo_FORT_Dictionary.getSchema(buffer));
+        eventStore[buffer]   = bank_ptr;
+         
+        if (verbose) {
+          printf("---> map : initializing bank \"%24s\" (%6d, %5d) to the store\n",
+          buffer,hipo_FORT_Dictionary.getSchema(buffer).getGroup(),
+          hipo_FORT_Dictionary.getSchema(buffer).getItem() );
+        }
+
+      } else { free(buffer); return; }
+    }
+    hipo_FORT_Event.getStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
+    if (verbose) eventStore[buffer]->show();
     free(buffer);
   }
-/*
-  void hipo_read_bank_byid_(int *group, int *item){
-    int igroup = *group;
-    int iitem = *item;
 
-    if(eventStore.count(igroup)==0){
-        printf("********* bank does not exist %d\n",igroup);
-        std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
-        for(int i = 0; i < schemaList.size(); i++){
-            int schGroup = hipo_FORT_Dictionary.getSchema(schemaList[i].c_str()).getGroup();
-            if(schGroup==igroup){
-              printf(" found group = %d\n",schGroup);
-               printf("---> map : initializing bank \"%24s\" (%6d) to the store\n",
-                 schemaList[i].c_str(),schGroup);
-                 hipo::bank *bank_ptr = new hipo::bank(hipo_FORT_Dictionary.getSchema(schemaList[i].c_str()));
-                 eventStore[schGroup] = bank_ptr;
-            }
-        }
-    }
-  }*/
+  /***** END Read methods for banks *****/
 
-  void get_bank_rows_(int *group, int *bankRows){
-      /*int igroup = *group;
-      if(eventStore.count(igroup)==0) *bankRows = 0;
-      *bankRows = eventStore[igroup]->getRows();*/
+  /***** Get methods for bank column arrays (McEneaney) *****/
+
+  void hipo_get_ints(const char *bankname, int banknameLength, const char *item, int itemLength, int* data) {
+
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
+
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getInt(buffer_item,i); }
+
   }
 
-  void hipo_read_float_(const char *group, const char *item, int *nread, float *buffer, int *maxRows,
-      int length_group, int length_item){
+  void hipo_get_floats(const char *bankname, int banknameLength, const char *item, int itemLength, float* data) {
 
-      char *buffer_group = (char * ) malloc(length_group+1);
-      memcpy(buffer_group,group,length_group);
-      buffer_group[length_group] = '\0';
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
 
-      char *buffer_item = (char * ) malloc(length_item+1);
-      memcpy(buffer_item,item,length_item);
-      buffer_item[length_item] = '\0';
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
 
-      //printf("---->>>>> reading float (%s) (%s)\n",buffer_group,buffer_item);
-      /*int id_g = *group;
-      int id_i = ;
-      int max  = *maxRows;
-      //printf("READIN FLOAT %d %d \n",*group,*item);
-      //std::vector<float> vec = hipo_FORT_Reader.getEvent()->getFloat(id_g,id_i);
-      //printf("RESULT SIZE = %d \n",vec.size());
-      for(int i = 0; i < vec.size(); i++){
-	       if(i<max) buffer[i] = vec[i];
-      }
-      *nread = vec.size();*/
-      if(eventStore.count(buffer_group)==0){
-         *nread = 0;
-         free(buffer_group);
-         free(buffer_item);
-         return;
-      }
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getFloat(buffer_item,i); }
 
-      hipo::bank *bank = eventStore[buffer_group];
-      int  nrows = bank->getRows();
-      if(nrows>(*maxRows)) nrows = *(maxRows);
-      //printf("---->>>>> reading float (%s) (%s) (%d)\n",buffer_group,buffer_item,nrows);
-      for(int i = 0; i < nrows; i++){
-         buffer[i] = bank->getFloat(buffer_item, i);
-      }
-      *nread = nrows;
-
-      free(buffer_group);
-      free(buffer_item);
   }
 
-  void hipo_read_double_(const char *group, const char *item, int *nread, double *buffer, int *maxRows,
-      int length_group, int length_item){
+  void hipo_get_doubles(const char *bankname, int banknameLength, const char *item, int itemLength, double* data) {
 
-      char *buffer_group = (char * ) malloc(length_group+1);
-      memcpy(buffer_group,group,length_group);
-      buffer_group[length_group] = '\0';
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
 
-      char *buffer_item = (char * ) malloc(length_item+1);
-      memcpy(buffer_item,item,length_item);
-      buffer_item[length_item] = '\0';
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
 
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getDouble(buffer_item,i); }
 
-      if(eventStore.count(buffer_group)==0){
-         *nread = 0;
-         free(buffer_group);
-         free(buffer_item);
-         return;
-      }
-
-      hipo::bank *bank = eventStore[buffer_group];
-      int  nrows = bank->getRows();
-      if(nrows>(*maxRows)) nrows = *(maxRows);
-      //printf("---->>>>> reading float (%s) (%s) (%d)\n",buffer_group,buffer_item,nrows);
-      for(int i = 0; i < nrows; i++){
-         buffer[i] = bank->getDouble(buffer_item, i);
-      }
-      *nread = nrows;
-
-      free(buffer_group);
-      free(buffer_item);
   }
 
-  void hipo_read_int_(const char *group, const char *item, int *nread, int *buffer, int *maxRows,
-      int length_group, int length_item){
+  void hipo_get_shorts(const char *bankname, int banknameLength, const char *item, int itemLength, short* data) {
 
-      char *buffer_group = (char * ) malloc(length_group+1);
-      memcpy(buffer_group,group,length_group);
-      buffer_group[length_group] = '\0';
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
 
-      char *buffer_item = (char * ) malloc(length_item+1);
-      memcpy(buffer_item,item,length_item);
-      buffer_item[length_item] = '\0';
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
 
-      if(eventStore.count(buffer_group)==0){
-         *nread = 0;
-         free(buffer_group);
-         free(buffer_item);
-         return;
-      }
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getShort(buffer_item,i); }
 
-      hipo::bank *bank = eventStore[buffer_group];
-      int  nrows = bank->getRows();
-      if(nrows>(*maxRows)) nrows = *(maxRows);
-      //printf("---->>>>> reading float (%s) (%s) (%d)\n",buffer_group,buffer_item,nrows);
-      for(int i = 0; i < nrows; i++){
-         buffer[i] = bank->getInt(buffer_item, i);
-      }
-      *nread = nrows;
-      free(buffer_group);
-      free(buffer_item);
-    }
+  }
 
-    void hipo_read_long_(const char *group, const char *item, int *nread, int64_t *buffer, int *maxRows,
-        int length_group, int length_item){
+  void hipo_get_longs(const char *bankname, int banknameLength, const char *item, int itemLength, long* data) {
 
-        char *buffer_group = (char * ) malloc(length_group+1);
-        memcpy(buffer_group,group,length_group);
-        buffer_group[length_group] = '\0';
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
 
-        char *buffer_item = (char * ) malloc(length_item+1);
-        memcpy(buffer_item,item,length_item);
-        buffer_item[length_item] = '\0';
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
 
-        if(eventStore.count(buffer_group)==0){
-           *nread = 0;
-           free(buffer_group);
-           free(buffer_item);
-           return;
-        }
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getLong(buffer_item,i); }
 
-        hipo::bank *bank = eventStore[buffer_group];
-        int  nrows = bank->getRows();
-        if(nrows>(*maxRows)) nrows = *(maxRows);
-        //printf("---->>>>> reading float (%s) (%s) (%d)\n",buffer_group,buffer_item,nrows);
-        for(int i = 0; i < nrows; i++){
-           buffer[i] = bank->getLong(buffer_item, i);
-        }
-        *nread = nrows;
-        free(buffer_group);
-        free(buffer_item);
-      }
-    /*void hipo_read_int_(int *group, int *item, int *nread, int *buffer, int *maxRows){
+  }
 
-    }*/
+  /***** END get methods for bank column arrays *****/
 
-}
+} // END extern "C"
