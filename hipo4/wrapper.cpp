@@ -142,6 +142,10 @@ extern "C" {
       return 0;
   }
 
+  void hipo_read_reset_() {
+    hipo_FORT_Reader.reset();
+  }
+
   bool hipo_has_bank_(const char *bankname, int banknameLength) {
     char *buffer = (char * ) malloc(banknameLength+1);
     memcpy(buffer,bankname,banknameLength);
