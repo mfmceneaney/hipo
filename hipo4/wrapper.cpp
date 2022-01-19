@@ -10,6 +10,7 @@ hipo::writer      hipo_FORT_Writer;
 
 std::map<std::string, hipo::bank *> eventStore;
 std::string banklist;
+std::string entriestypeslist;
 
 extern "C" {
 
@@ -210,7 +211,7 @@ extern "C" {
     return entries;
   }
 
-  void hipo_get_bank_entries_names_(const char *bankname, int banknameLength, const unsigned char** entries) {
+  hipo_get_bank_entries_names_(const char *bankname, int banknameLength, const unsigned char** entries) {
     char *buffer = (char * ) malloc(banknameLength+1);
     memcpy(buffer,bankname,banknameLength);
     buffer[banknameLength] = '\0';
@@ -229,8 +230,8 @@ extern "C" {
     memcpy(buffer,bankname,banknameLength);
     buffer[banknameLength] = '\0';
 
-    std::string str = hipo_FORT_Dictionary.getSchema(buffer).getSchemaString();
-    const unsigned char* entries = reinterpret_cast<const unsigned char*>(str.c_str());
+    entriestypeslist = hipo_FORT_Dictionary.getSchema(buffer).getSchemaString();
+    const unsigned char* entries = reinterpret_cast<const unsigned char*>(entriestypeslist.c_str());
     return entries;
   }
 
