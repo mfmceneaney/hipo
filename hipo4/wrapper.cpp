@@ -10,6 +10,7 @@ hipo::writer      hipo_FORT_Writer;
 
 std::map<std::string, hipo::bank *> eventStore;
 std::string banklist;
+std::string entrieslist;
 std::string entriestypeslist;
 
 extern "C" {
@@ -211,20 +212,27 @@ extern "C" {
     return entries;
   }
 
-  hipo_get_bank_entries_names_(const char *bankname, int banknameLength, const unsigned char** entries) {
+  //NOTE: This uses the `std::string entrieslist` variable defined at the top of the file.
+  const unsigned char *hipo_get_bank_entries_names_(const char *bankname, int banknameLength) {
     char *buffer = (char * ) malloc(banknameLength+1);
     memcpy(buffer,bankname,banknameLength);
     buffer[banknameLength] = '\0';
 
     hipo::schema schema = hipo_FORT_Dictionary.getSchema(buffer);
-    const int nEntries  = schema.getEntries();
-    for (int i=0; i<nEntries; i++) {
-      std::string str = schema.getEntryName(i);
-      const unsigned char* entry = reinterpret_cast<const unsigned char*>(str.c_str());
-      entries[i] = entry;
+    int nEntries = schema.getEntries();
+    std::string name;
+    std::string separator = " ";
+    for (int idx=0; idx<nEntries; idx++) {
+      name = schema.getEntryName(idx);
+      entrieslist = entrieslist + name;
+      if (idx<nEntries-1) { entrieslist = entrieslist + separator; }
     }
+    const unsigned char* entries = reinterpret_cast<const unsigned char*>(entrieslist.c_str());
+    
+    return entries;
   }
 
+  //NOTE: This uses the `std::string entriestypeslist` variable defined at the top of the file.
   const unsigned char *hipo_get_bank_entries_names_types_(const char *bankname, int banknameLength) {
     char *buffer = (char * ) malloc(banknameLength+1);
     memcpy(buffer,bankname,banknameLength);
