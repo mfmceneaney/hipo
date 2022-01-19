@@ -227,7 +227,7 @@ extern "C" {
       entrieslist = entrieslist + name;
       if (idx<nEntries-1) { entrieslist = entrieslist + separator; }
     }
-    const unsigned char* entries = reinterpret_cast<const unsigned char*>(entrieslist.c_str());
+    const unsigned char *entries = reinterpret_cast<const unsigned char*>(entrieslist.c_str());
     
     return entries;
   }
@@ -239,7 +239,7 @@ extern "C" {
     buffer[banknameLength] = '\0';
 
     entriestypeslist = hipo_FORT_Dictionary.getSchema(buffer).getSchemaString();
-    const unsigned char* entries = reinterpret_cast<const unsigned char*>(entriestypeslist.c_str());
+    const unsigned char *entries = reinterpret_cast<const unsigned char*>(entriestypeslist.c_str());
     return entries;
   }
 
