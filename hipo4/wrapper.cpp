@@ -85,7 +85,6 @@ extern "C" {
       const char * buffer = schemaList[idx].c_str();
       hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
       hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
-      eventStore[buffer]->show();//DEBUGGING
     } // for name in schemaList
   }
 
