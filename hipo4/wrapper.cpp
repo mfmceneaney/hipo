@@ -79,6 +79,16 @@ extern "C" {
     hipo_FORT_Writer.close();
   }
 
+  void hipo_write_all_banks_() {
+    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      const char * buffer = schemaList[idx].c_str();
+      hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
+      hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
+      eventStore[buffer]->show();//DEBUGGING
+    } // for name in schemaList
+  }
+
   void hipo_write_bank_(const char *name, const char** names, double** data, int bankCols, int bankRows, std::string& dtype) {
     hipo::dictionary dict = hipo_FORT_Writer.getDictionary();
     hipo::schema schema = dict.getSchema(name);
@@ -99,30 +109,6 @@ extern "C" {
 
   void hipo_add_event_() {
     hipo_FORT_Writer.addEvent(hipo_FORT_Event);
-  }
-
-  void hipo_write_all_banks_() {
-    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
-    for(int idx = 0; idx<schemaList.size(); idx++) {
-      const char * buffer = schemaList[idx].c_str();
-      hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
-      hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
-      eventStore[buffer]->show();//DEBUGGING
-    } // for name in schemaList
-  }
-
-  /**
-  * Get greatest group # of all schema in hipo_FORT_Writer.dictionary for appending banks.
-  */
-  int hipo_get_group_() {
-    int group = 0;
-    std::vector<std::string> schemaList = hipo_FORT_Writer.getDictionary().getSchemaList();
-    for(int idx = 0; idx<schemaList.size(); idx++) {
-      const char * buffer = schemaList[idx].c_str();
-      int group_ = hipo_FORT_Writer.getDictionary().getSchema(buffer).getGroup();
-      if (group_ > group) { group = group_; }
-    }
-    return group;
   }
 
   /***** END Write methods for banks *****/
@@ -175,6 +161,20 @@ extern "C" {
     buffer[banknameLength] = '\0';
 
     std::cout<<hipo_FORT_Dictionary.getSchema(buffer).getSchemaString()<<std::endl;
+  }
+
+  /**
+  * Get greatest group # of all schema in hipo_FORT_Writer.dictionary for appending banks.
+  */
+  int hipo_get_group_() {
+    int group = 0;
+    std::vector<std::string> schemaList = hipo_FORT_Writer.getDictionary().getSchemaList();
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      const char * buffer = schemaList[idx].c_str();
+      int group_ = hipo_FORT_Writer.getDictionary().getSchema(buffer).getGroup();
+      if (group_ > group) { group = group_; }
+    }
+    return group;
   }
 
   int hipo_get_bank_rows_(const char *bankname, int banknameLength) {
