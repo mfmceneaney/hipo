@@ -101,9 +101,45 @@ extern "C" {
     hipo_FORT_Writer.addEvent(hipo_FORT_Event);
   }
 
+  void hipo_write_all_banks_() {
+    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      const char * buffer = schemaList[idx].c_str();
+      hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
+      hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
+      eventStore[buffer]->show();//DEBUGGING
+    } // for name in schemaList
+  }
+
+  /**
+  * Get greatest group # of all schema in hipo_FORT_Writer.dictionary for appending banks.
+  */
+  int hipo_get_group_() {
+    int group = 0;
+    std::vector<std::string> schemaList = hipo_FORT_Writer.getDictionary().getSchemaList();
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      const char * buffer = schemaList[idx].c_str();
+      int group_ = hipo_FORT_Writer.getDictionary().getSchema(buffer).getGroup();
+      if (group_ > group) { group = group_; }
+    }
+    return group;
+  }
+
   /***** END Write methods for banks *****/
 
   /***** Read methods for banks (Gavalian/McEneaney) *****/
+
+  void hipo_read_all_banks_() {
+    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
+    for(int idx = 0; idx<schemaList.size(); idx++) {
+      const char * buffer = schemaList[idx].c_str();
+      if (eventStore.count(buffer)==0) {
+          hipo::bank *bank_ptr = new hipo::bank(hipo_FORT_Dictionary.getSchema(buffer));
+          eventStore[buffer]   = bank_ptr;
+      }
+      hipo_FORT_Event.getStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
+    } // for name in schemaList
+  }
 
   int hipo_go_to_event_(int* fstatus, int* eventNumber){
     bool status = hipo_FORT_Reader.gotoEvent(*eventNumber);
@@ -159,6 +195,7 @@ extern "C" {
     // Get bank entries
     return hipo_FORT_Dictionary.getSchema(buffer).getEntries();
   }
+
   //NOTE: This uses the `std::string banklist` variable defined at the top of the file.
   const unsigned char *hipo_get_banks_() {
     std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
