@@ -163,14 +163,14 @@ extern "C" {
   }
 
   /**
-  * Get greatest group # of all schema in hipo_FORT_Writer.dictionary for appending banks.
+  * Get greatest group # of all schema in hipo_FORT_Dictionary for appending banks.
   */
   int hipo_get_group_() {
     int group = 0;
-    std::vector<std::string> schemaList = hipo_FORT_Writer.getDictionary().getSchemaList();
+    std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
     for(int idx = 0; idx<schemaList.size(); idx++) {
       const char * buffer = schemaList[idx].c_str();
-      int group_ = hipo_FORT_Writer.getDictionary().getSchema(buffer).getGroup();
+      int group_ = hipo_FORT_Dictionary.getSchema(buffer).getGroup();
       if (group_ > group) { group = group_; }
     }
     return group;
