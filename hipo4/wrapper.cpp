@@ -85,6 +85,7 @@ extern "C" {
     std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
     for(int idx = 0; idx<schemaList.size(); idx++) {
       const char * buffer = schemaList[idx].c_str();
+      std::cout<<"DEBUGGING: hipo_write_all_banks_(): schema = "<<buffer<<std::endl;//DEBUGGING
       hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
       hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
     } // for name in schemaList
