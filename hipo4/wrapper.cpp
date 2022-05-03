@@ -81,32 +81,34 @@ extern "C" {
     hipo_FORT_Writer.close();
   }
 
-  void hipo_write_all_banks_() {
+  void hipo_write_all_banks_() { //NOTE: This method obsolete.
     std::vector<std::string> schemaList = hipo_FORT_Dictionary.getSchemaList();
     for(int idx = 0; idx<schemaList.size(); idx++) {
       const char * buffer = schemaList[idx].c_str();
-      std::cout<<"DEBUGGING: hipo_write_all_banks_(): schema = "<<buffer<<std::endl;//DEBUGGING
       hipo_FORT_Event.getStructure(*eventStore[buffer]); //IMPORTANT!  Have to getStructure before reading!
       hipo_FORT_Event.addStructure(*eventStore[buffer]); // IMPORTANT! Have to read event before you can do anything with it.
     } // for name in schemaList
   }
 
-  void hipo_write_bank_(const char *name, const char** names, double** data, int bankCols, int bankRows, std::string& dtype) {
+  void hipo_write_bank_(const char *name, const char** names, double** data, int bankCols, int bankRows, const char* dtype) {
     hipo::dictionary dict = hipo_FORT_Writer.getDictionary();
     hipo::schema schema = dict.getSchema(name);
     hipo::bank *bank = new hipo::bank(schema);
     bank->setRows(bankRows);
 
+    const char* dtype_double = "D";
+    const char* dtype_int    = "I";
+    const char* dtype_float  = "F";
+    
     for (int i=0; i<bankCols; i++){
       for (int j=0; j<bankRows; j++) {
-        if (dtype=="D") bank->putDouble(names[i],j,data[i][j]);
-        else if (dtype=="I") bank->putInt(names[i],j,(int)data[i][j]);
-        else if (dtype=="F") bank->putFloat(names[i],j,(float)data[i][j]);
+        if (dtype==dtype_double)     bank->putDouble(names[i],j,data[i][j]);
+        else if (dtype==dtype_int)   bank->putInt(names[i],j,(int)data[i][j]);
+        else if (dtype==dtype_float) bank->putFloat(names[i],j,(float)data[i][j]);
         else bank->putDouble(names[i],j,data[i][j]);
       }
     }
-
-    hipo_FORT_Event.addStructure(*bank);
+    hipo_FORT_Event.addStructure(*bank); //NOTE: DO NOT do hipo_FORT_event.ggetStructure(*bank) HERE!!!
   }
 
   void hipo_add_event_() {
