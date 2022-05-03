@@ -382,6 +382,21 @@ extern "C" {
 
   }
 
+  void hipo_get_bytes(const char *bankname, int banknameLength, const char *item, int itemLength, long* data) {
+
+    char *buffer = (char * ) malloc(banknameLength+1);
+    memcpy(buffer,bankname,banknameLength);
+    buffer[banknameLength] = '\0';
+
+    char *buffer_item = (char * ) malloc(itemLength+1);
+    memcpy(buffer_item,item,itemLength);
+    buffer_item[itemLength] = '\0';
+
+    int bankRows = eventStore[buffer]->getRows();
+    for (int i=0; i<bankRows; i++) { data[i] = eventStore[buffer]->getByte(buffer_item,i); }
+
+  }
+
   /***** END get methods for bank column arrays *****/
 
 } // END extern "C"
