@@ -46,7 +46,7 @@ if(NOT LZ4_FOUND)
     message(STATUS "* We did not find a system LZ4 package -- We will build this locally. *")
     message(STATUS "***********************************************************************")
     add_custom_target(LZ4 ALL
-                      COMMAND make lz4
+                      COMMAND make lz4 CFLAGS=-fPIC
                       WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/lz4)
     set(LZ4_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/lz4/lib)
     set(LZ4_LIBRARIES ${PROJECT_SOURCE_DIR}/lz4/lib/liblz4.a)
