@@ -182,6 +182,7 @@ namespace hipo {
         int    getByte(   const char *name, int index) const noexcept;
         float  getFloat(  const char *name, int index) const noexcept;
         double getDouble( const char *name, int index) const noexcept;
+        std::vector<double> getDoubles( const char *name) const noexcept;//TODO: ADDED
         long   getLong(   const char *name, int index) const noexcept;
 
         void    putInt(    const char *name, int index, int32_t value);
@@ -322,6 +323,19 @@ namespace hipo {
 	return getDoubleAt(offset);
       }
       return 0.0;
+    }
+
+    //TODO: ADDED
+    inline std::vector<double>  bank::getDoubles(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<double> arr(0);
+      if(bankSchema.getEntryType(item)==5){
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back(getDoubleAt(offset));
+        }
+      }
+      return arr;
     }
 
     inline long bank::getLong(const char *name, int index) const noexcept{
