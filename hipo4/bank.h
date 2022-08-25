@@ -182,8 +182,14 @@ namespace hipo {
         int    getByte(   const char *name, int index) const noexcept;
         float  getFloat(  const char *name, int index) const noexcept;
         double getDouble( const char *name, int index) const noexcept;
-        std::vector<double> getDoubles( const char *name) const noexcept;//TODO: ADDED
         long   getLong(   const char *name, int index) const noexcept;
+
+        std::vector<int>    getInts(    const char *name) const noexcept;//TODO: ADDED
+        std::vector<int>    getShorts(  const char *name) const noexcept;//TODO: ADDED
+        std::vector<int>    getBytes(   const char *name) const noexcept;//TODO: ADDED
+        std::vector<float>  getFloats(  const char *name) const noexcept;//TODO: ADDED
+        std::vector<double> getDoubles( const char *name) const noexcept;//TODO: ADDED
+        std::vector<long>   getLongs(   const char *name) const noexcept;//TODO: ADDED
 
         void    putInt(    const char *name, int index, int32_t value);
         void    putShort(  const char *name, int index, int16_t value);
@@ -191,6 +197,13 @@ namespace hipo {
         void    putFloat(  const char *name, int index, float value);
         void    putDouble( const char *name, int index, double value);
         void    putLong(   const char *name, int index, int64_t value);
+
+        void    putInts(    const char *name, std::vector<int32_t> arr);
+        void    putShorts(  const char *name, std::vector<int16_t> arr);
+        void    putBytes(   const char *name, std::vector<int8_t> arr);
+        void    putFloats(  const char *name, std::vector<float> arr);
+        void    putDoubles( const char *name, std::vector<double> arr);
+        void    putLongs(   const char *name, std::vector<int64_t> arr);
 
  	void    putInt(int item, int index, int32_t value);
         void    putShort(int item, int index, int16_t value);
@@ -295,6 +308,7 @@ namespace hipo {
       }
       return 0;
     }
+
     inline int    bank::getByte(const char *name, int index) const noexcept{
       int item = bankSchema.getEntryOrder(name);
       int type = bankSchema.getEntryType(item);
@@ -325,19 +339,6 @@ namespace hipo {
       return 0.0;
     }
 
-    //TODO: ADDED
-    inline std::vector<double>  bank::getDoubles(const char *name) const noexcept{
-      int item = bankSchema.getEntryOrder(name);
-      std::vector<double> arr(0);
-      if(bankSchema.getEntryType(item)==5){
-        for (int index=0; index<bankRows; index++) {
-          int offset = bankSchema.getOffset(item, index, bankRows);
-          arr.push_back(getDoubleAt(offset));
-        }
-      }
-      return arr;
-    }
-
     inline long bank::getLong(const char *name, int index) const noexcept{
       int item = bankSchema.getEntryOrder(name);
       if(bankSchema.getEntryType(item)==8){
@@ -346,6 +347,90 @@ namespace hipo {
       }
       return 0;
     }
+
+//--------------------------------------------------//
+// Get array functions - Matthew McEneaney
+
+    //TODO: ADDED
+    inline std::vector<int> bank::getInts(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<int> arr(0);
+      if(bankSchema.getEntryType(item)==2) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back((int)getIntAt(offset));
+        }
+      }
+      return arr;
+    }
+
+    //TODO: ADDED
+    inline std::vector<int> bank::getShorts(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<int> arr(0);
+      if(bankSchema.getEntryType(item)==2) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back((int)getShortAt(offset));
+        }
+      }
+      return arr;
+    }
+
+    //TODO: ADDED
+    inline std::vector<int> bank::getBytes(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<int> arr(0);
+      if(bankSchema.getEntryType(item)==1) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back((int)getByteAt(offset));
+        }
+      }
+      return arr;
+    }
+
+    //TODO: ADDED
+    inline std::vector<float>  bank::getFloats(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<float> arr(0);
+      if(bankSchema.getEntryType(item)==4) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back(getFloatAt(offset));
+        }
+      }
+      return arr;
+    }
+
+    //TODO: ADDED
+    inline std::vector<double>  bank::getDoubles(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<double> arr(0);
+      if(bankSchema.getEntryType(item)==5) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back(getDoubleAt(offset));
+        }
+      }
+      return arr;
+    }
+
+    //TODO: ADDED
+    inline std::vector<long>  bank::getLongs(const char *name) const noexcept{
+      int item = bankSchema.getEntryOrder(name);
+      std::vector<long> arr(0);
+      if(bankSchema.getEntryType(item)==8) {
+        for (int index=0; index<bankRows; index++) {
+          int offset = bankSchema.getOffset(item, index, bankRows);
+          arr.push_back(getLongAt(offset));
+        }
+      }
+      return arr;
+    }
+
+//--------------------------------------------------//
+
   inline void    bank::putInt(int item, int index, int32_t value){
     //int type = bankSchema.getEntryType(item);
       int offset = bankSchema.getOffset(item, index, bankRows);
@@ -377,5 +462,52 @@ namespace hipo {
       int offset = bankSchema.getOffset(item, index, bankRows);
       putLongAt(offset,value);
     }
+
+//--------------------------------------------------//
+
+    inline void bank::putInts(    const char *name, std::vector<int32_t> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putIntAt(offset,arr[index]);
+      }
+    }
+    inline void bank::putShorts(  const char *name, std::vector<int16_t> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putShortAt(offset,arr[index]);
+      }
+    }
+    inline void bank::putBytes(   const char *name, std::vector<int8_t> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putByteAt(offset,arr[index]);
+      }
+    }
+    inline void bank::putFloats(  const char *name, std::vector<float> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putFloatAt(offset,arr[index]);
+      }
+    }
+    inline void bank::putDoubles( const char *name, std::vector<double> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putDoubleAt(offset,arr[index]);
+      }
+    }
+    inline void bank::putLongs(   const char *name, std::vector<int64_t> arr) {
+      int item = bankSchema.getEntryOrder(name);
+      for (std::size_t index = 0; index < arr.size(); index++) {
+        int offset = bankSchema.getOffset(item, index, bankRows);
+        putLongAt(offset,arr[index]);
+      }
+    }
+
+//--------------------------------------------------//
 }
 #endif /* BANK_H */
