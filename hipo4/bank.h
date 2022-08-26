@@ -355,7 +355,7 @@ namespace hipo {
     inline std::vector<int> bank::getInts(const char *name) const noexcept{
       int item = bankSchema.getEntryOrder(name);
       std::vector<int> arr(0);
-      if(bankSchema.getEntryType(item)==2) {
+      if(bankSchema.getEntryType(item)==3) {
         for (int index=0; index<bankRows; index++) {
           int offset = bankSchema.getOffset(item, index, bankRows);
           arr.push_back((int)getIntAt(offset));
